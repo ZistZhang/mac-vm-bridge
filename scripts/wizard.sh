@@ -300,6 +300,7 @@ health_check() {
 main() {
   parse_args "$@"
   echo ""; echo "╔══════════════════════════════════════╗"
+  check_deps
   echo "║     Mac VM Bridge - 自动化向导      ║"
   echo "╚══════════════════════════════════════╝"; echo ""
   local stage; stage=$(load_state)
