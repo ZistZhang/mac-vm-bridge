@@ -2,24 +2,26 @@
 
 1. 克隆与授权
 ```bash
-git clone https://github.com/your-org/mac-vm-bridge.git
+git clone https://github.com/ZistZhang/mac-vm-bridge.git
 cd mac-vm-bridge
 chmod +x bin/mvb scripts/*.sh
 ```
 
-2. 运行入口
+2. 运行入口（自动检测 Windows 虚机名）
 ```bash
 ./bin/mvb
 ```
-
-3. 按向导提示
 - 选择或拖拽镜像（支持 OVA/OVF/VMX 或含 VMX 的目录）
-- 确认默认 IP：服务端 192.168.200.131，Windows 192.168.200.2
-- 输入服务端凭据（默认 root/123456）
-- 如 Windows 未安装 Parallels Tools，按提示安装并继续
+- 确认默认 IP：服务端 192.168.200.131，Windows 192.168.200.2（冲突只提示）
+- 如 Windows 未装 Parallels Tools，按提示安装后继续
+
+3. 兼容模式（遇到 dracut/驱动问题时使用）
+```bash
+MVB_COMPAT=1 DISK=$PWD/server.qcow2 ./scripts/macos/qemu-up.sh
+```
 
 4. 健康检查
-- 脚本会生成 report.md，包含连通性结果和日志路径
+- 向导会生成 `report.md`，包含连通性结果与日志路径
 
 5. 清理
 ```bash
