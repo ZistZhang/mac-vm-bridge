@@ -17,11 +17,25 @@ BRIDGE_IF=""
 CIDR_BASE="192.168.200"
 SERVER_IP="${CIDR_BASE}.131"
 WIN_IP="${CIDR_BASE}.2"
+# Host-side SSH forward port for the QEMU user-net. We will probe and auto-adjust.
+SSH_PORT=2222
 SKIP_CONFLICT=0
 VM_NAME=""
 
 save_state(){ echo "{\"stage\":\"$1\",\"timestamp\":$(date +%s)}" > "$STATE_FILE"; }
 load_state(){ [ -f "$STATE_FILE" ] && jq -r .stage "$STATE_FILE" 2>/dev/null || echo "init"; }
+
+
+check_deps() {
+  local missing=()
+  for c in jq nc expect; do
+    command -v "$c" >/dev/null 2>&1 || missing+=("$c")
+  done
+  if [ ${#missing[@]} -gt 0 ]; then
+    err "缺少依赖: ${missing[*]}。请先运行 ./scripts/bootstrap.sh"
+    exit 1
+  fi
+}
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -147,12 +161,22 @@ start_qemu() {
   local DISK="$1"; [ -f "$DISK" ] || { err "磁盘不存在：$DISK"; exit 1; }
   echo ""; echo "==== 启动 QEMU ===="; echo ""
   info "x86_64 (TCG)，4 vCPU / 4GB"
-  info "管理口 NAT 127.0.0.1:2222 → SSH；业务口桥接 $BRIDGE_IF"
+  local p=$SSH_PORT
+  for i in $(seq 0 20); do
+    if ! nc -z 127.0.0.1 "$p" >/dev/null 2>&1; then SSH_PORT=$p; break; fi
+    p=$((p+1))
+  done
+  info "管理口 NAT 127.0.0.1:${SSH_PORT} → SSH；业务口桥接 $BRIDGE_IF"
+  for i in 0 0 1 2 3 4 5 8 9 12 20 29 61 80 701 33 98 100 204 250 395 398 399 400seq 0 20); do
+    if ! nc -z 127.0.0.1 "" >/dev/null 2>&1; then SSH_PORT=; break; fi
+    p=0 0 1 2 3 4 5 8 9 12 20 29 61 80 701 33 98 100 204 250 395 398 399 400(p+1))
+  done
+  info "管理口 NAT 127.0.0.1: → SSH；业务口桥接 "
   warn "启动时需要 sudo（vmnet 桥接）"
   sudo qemu-system-x86_64 \
     -machine q35,accel=tcg -cpu max -smp 4 -m 4096 \
     -drive file="$DISK",format=qcow2,if=virtio,cache=writeback \
-    -netdev user,id=mgmt,hostfwd=tcp:127.0.0.1:2222-:22 \
+    -netdev user,id=mgmt,hostfwd=tcp:127.0.0.1:${SSH_PORT}-:22 \
     -device virtio-net-pci,netdev=mgmt,mac=52:54:00:22:33:45 \
     -netdev vmnet-bridged,id=biz,ifname="$BRIDGE_IF" \
     -device virtio-net-pci,netdev=biz,mac=52:54:00:22:33:44 \
@@ -168,7 +192,7 @@ start_qemu() {
 wait_ssh() {
   echo ""; echo "==== 等待 SSH ===="; echo -n "探测 127.0.0.1:2222"
   for _ in {1..60}; do
-    if nc -z 127.0.0.1 2222 >/dev/null 2>&1; then echo ""; ok "SSH 已开放"; return 0; fi
+    if nc -z 127.0.0.1 "$SSH_PORT" >/dev/null 2>&1; then echo ""; ok "SSH 已开放"; return 0; fi
     echo -n "."; sleep 2
   done
   echo ""; warn "SSH 未就绪，请在控制台启用 sshd 后回车继续"
@@ -177,7 +201,7 @@ wait_ssh() {
 
 config_guest_network() {
   echo ""; echo "==== 配置服务端业务网卡 ===="; echo ""
-  if ! nc -z 127.0.0.1 2222 >/dev/null 2>&1; then
+  if ! nc -z 127.0.0.1 "$SSH_PORT" >/dev/null 2>&1; then
     warn "SSH 不可用，跳过自动配置"
     info "手动设置：$SERVER_IP/24（无网关）"
     return 0
@@ -205,7 +229,7 @@ ip -4 addr; ip route
   expect > "$LOG_DIR/guest-net.log" 2>&1 <<EOF_EXP
 set timeout 120
 log_user 0
-spawn ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${user}@127.0.0.1 "sudo bash -c '$(printf "%q" "$script")'"
+spawn ssh -p ${SSH_PORT} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${user}@127.0.0.1 "if command -v sudo >/dev/null 2>&1; then sudo bash -lc '$(printf "%q" "$script")'; else bash -lc '$(printf "%q" "$script")'; fi"
 expect {
   -re "yes/no" { send "yes\r"; exp_continue }
   -re "[Pp]assword:" { send "$pass\r"; exp_continue }
@@ -247,7 +271,7 @@ config_windows() {
 health_check() {
   echo ""; echo "==== 健康检查 ===="; echo ""
   local S1="✗" S2="✗" S3="待测"
-  if nc -z 127.0.0.1 2222 >/dev/null 2>&1; then S1="✓"; ok "管理口 SSH 可达"; else err "管理口 SSH 不可达"; fi
+  if nc -z 127.0.0.1 "$SSH_PORT" >/dev/null 2>&1; then S1="✓"; ok "管理口 SSH 可达"; else err "管理口 SSH 不可达"; fi
   if ping -c2 -W2 "$SERVER_IP" >/dev/null 2>&1; then S2="✓"; ok "宿主 → 服务端($SERVER_IP) 可达"; else err "宿主 → 服务端 不通"; fi
   echo "请在 Windows 内执行：ping $SERVER_IP"; read -p "是否可达？[y/N] " y; [[ "$y" =~ ^[Yy]$ ]] && S3="✓" && ok "Windows → 服务端 可达" || { S3="✗"; warn "Windows → 服务端 不通"; }
   {
