@@ -239,9 +239,13 @@ EOF_EXP
 
 config_windows() {
   echo ""; echo "==== 配置 Windows 虚拟机 ===="; echo ""
-  prlctl list -a 2>/dev/null | grep -v "UUID" | awk '{print $NF}' || true
+  # Auto-detect Windows VM name
   if [ -z "$VM_NAME" ]; then
-    cand=$(prlctl list -a | tail -n +2 | awk -F'] ' '{print $NF}' 2>/dev/null)
+    if prlctl list -a -o name >/dev/null 2>&1; then
+      cand=$(prlctl list -a -o name | awk 'NR>1{print $0}')
+    else
+      cand=$(prlctl list -a | awk 'NR>1{print substr($0,index($0,$4))}')
+    fi
     vm_auto=""
     for n in $cand; do
       if prlctl list -i "$n" 2>/dev/null | grep -qiE 'OS:.*Windows|Guest OS:.*Windows|win-'; then vm_auto="$n"; break; fi
@@ -249,7 +253,7 @@ config_windows() {
     if [ -n "$vm_auto" ]; then VM_NAME="$vm_auto"; echo "[i] Auto-detected VM: $VM_NAME"; fi
   fi
   if [ -z "$VM_NAME" ]; then read -rp "Windows VM 名称: " VM_NAME; fi
-  prlctl list -a 2>/dev/null | grep -q "$VM_NAME" || { err "未找到 VM：$VM_NAME"; exit 1; }
+  prlctl list -a -o name 2>/dev/null | grep -F " $VM_NAME" >/dev/null || { err "未找到 VM：$VM_NAME"; exit 1; }
   prlctl set "$VM_NAME" --device-add net --type shared --connect 2>/dev/null || true
   prlctl set "$VM_NAME" --device-add net --type bridged --iface "$BRIDGE_IF" --connect 2>/dev/null || true
   prlctl start "$VM_NAME" 2>/dev/null || true; sleep 5
