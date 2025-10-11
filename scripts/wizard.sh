@@ -133,6 +133,7 @@ convert_image() {
   ok "转换完成"; qemu-img info "$OUT" | head -n5; echo ""
   save_state "image_converted"
 }
+  rm -rf "$ROOT/ova_unpack" 2>/dev/null || true
 
 conflict_check() {
   [ "$SKIP_CONFLICT" -eq 1 ] && { info "跳过冲突检测"; return; }
@@ -157,6 +158,9 @@ conflict_check() {
   fi
 }
 
+
+
+
 start_qemu() {
   local DISK="$1"; [ -f "$DISK" ] || { err "磁盘不存在：$DISK"; exit 1; }
   echo ""; echo "==== 启动 QEMU ===="; echo ""
@@ -167,11 +171,6 @@ start_qemu() {
     p=$((p+1))
   done
   info "管理口 NAT 127.0.0.1:${SSH_PORT} → SSH；业务口桥接 $BRIDGE_IF"
-  for i in 0 0 1 2 3 4 5 8 9 12 20 29 61 80 701 33 98 100 204 250 395 398 399 400seq 0 20); do
-    if ! nc -z 127.0.0.1 "" >/dev/null 2>&1; then SSH_PORT=; break; fi
-    p=0 0 1 2 3 4 5 8 9 12 20 29 61 80 701 33 98 100 204 250 395 398 399 400(p+1))
-  done
-  info "管理口 NAT 127.0.0.1: → SSH；业务口桥接 "
   warn "启动时需要 sudo（vmnet 桥接）"
   sudo qemu-system-x86_64 \
     -machine q35,accel=tcg -cpu max -smp 4 -m 4096 \
@@ -188,9 +187,8 @@ start_qemu() {
   ok "QEMU 已启动（PID: $(cat "$PID_FILE")）"
   save_state "qemu_started"
 }
-
 wait_ssh() {
-  echo ""; echo "==== 等待 SSH ===="; echo -n "探测 127.0.0.1:2222"
+  echo ""; echo "==== 等待 SSH ===="; echo -n "探测 127.0.0.1:${SSH_PORT}"
   for _ in {1..60}; do
     if nc -z 127.0.0.1 "$SSH_PORT" >/dev/null 2>&1; then echo ""; ok "SSH 已开放"; return 0; fi
     echo -n "."; sleep 2
@@ -316,3 +314,55 @@ main() {
 }
 
 main "$@"
+start_qemu() {
+  local DISK="$1"; [ -f "$DISK" ] || { err "磁盘不存在：$DISK"; exit 1; }
+  echo ""; echo "==== 启动 QEMU ===="; echo ""
+  info "x86_64 (TCG)，4 vCPU / 4GB"
+  local p=$SSH_PORT
+  for i in $(seq 0 20); do
+    if ! nc -z 127.0.0.1 "$p" >/dev/null 2>&1; then SSH_PORT=$p; break; fi
+    p=$((p+1))
+  done
+  info "管理口 NAT 127.0.0.1:${SSH_PORT} → SSH；业务口桥接 $BRIDGE_IF"
+  warn "启动时需要 sudo（vmnet 桥接）"
+  sudo qemu-system-x86_64 \
+    -machine q35,accel=tcg -cpu max -smp 4 -m 4096 \
+    -drive file="$DISK",format=qcow2,if=virtio,cache=writeback \
+    -netdev user,id=mgmt,hostfwd=tcp:127.0.0.1:${SSH_PORT}-:22 \
+    -device virtio-net-pci,netdev=mgmt,mac=52:54:00:22:33:45 \
+    -netdev vmnet-bridged,id=biz,ifname="$BRIDGE_IF" \
+    -device virtio-net-pci,netdev=biz,mac=52:54:00:22:33:44 \
+    -vga virtio -display default \
+    >"$LOG_DIR/qemu.log" 2>&1 &
+  echo $! > "$PID_FILE"
+  sleep 3
+  ps -p "$(cat "$PID_FILE")" >/dev/null 2>&1 || { err "QEMU 启动失败（logs/qemu.log）"; exit 1; }
+  ok "QEMU 已启动（PID: $(cat "$PID_FILE")）"
+  save_state "qemu_started"
+}
+start_qemu() {
+  local DISK="$1"; [ -f "$DISK" ] || { err "磁盘不存在：$DISK"; exit 1; }
+  echo ""; echo "==== 启动 QEMU ===="; echo ""
+  info "x86_64 (TCG)，4 vCPU / 4GB"
+  local p=$SSH_PORT
+  for i in $(seq 0 20); do
+    if ! nc -z 127.0.0.1 "$p" >/dev/null 2>&1; then SSH_PORT=$p; break; fi
+    p=$((p+1))
+  done
+  info "管理口 NAT 127.0.0.1:${SSH_PORT} → SSH；业务口桥接 $BRIDGE_IF"
+  warn "启动时需要 sudo（vmnet 桥接）"
+  sudo qemu-system-x86_64 \
+    -machine q35,accel=tcg -cpu max -smp 4 -m 4096 \
+    -drive file="$DISK",format=qcow2,if=virtio,cache=writeback \
+    -netdev user,id=mgmt,hostfwd=tcp:127.0.0.1:${SSH_PORT}-:22 \
+    -device virtio-net-pci,netdev=mgmt,mac=52:54:00:22:33:45 \
+    -netdev vmnet-bridged,id=biz,ifname="$BRIDGE_IF" \
+    -device virtio-net-pci,netdev=biz,mac=52:54:00:22:33:44 \
+    -vga virtio -display default \
+    >"$LOG_DIR/qemu.log" 2>&1 &
+  echo $! > "$PID_FILE"
+  sleep 3
+  ps -p "$(cat "$PID_FILE")" >/dev/null 2>&1 || { err "QEMU 启动失败（logs/qemu.log）"; exit 1; }
+  ok "QEMU 已启动（PID: $(cat "$PID_FILE")）"
+  save_state "qemu_started"
+}
