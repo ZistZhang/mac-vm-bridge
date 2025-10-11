@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+case "${1:-}" in
+  check)
+    exec "$ROOT/scripts/macos/check-vmnet.sh" ;;
+  convert)
+    shift; exec python3 "$ROOT/tools/vm2qemu/vm2qemu.py" convert "$@" ;;
+  run)
+    shift; exec python3 "$ROOT/tools/vm2qemu/vm2qemu.py" run "$@" ;;
+  pd-setup)
+    shift; exec "$ROOT/scripts/macos/pd-add-bridged.sh" "$@" ;;
+  windows-fix)
+    echo "请在 Windows 来宾中手动执行 scripts/windows/Config-BizNIC.ps1，或安装 Parallels Tools 后用 prlctl exec 调用。" ;;
+  *)
+    cat <<USAGE
+Mac VM Bridge CLI
+Usage:
+  mac-vm-bridge check                 # 检查 QEMU vmnet 支持与 Wi‑Fi
+  mac-vm-bridge convert --src <path> --out <dir> [--name server.qcow2]
+  mac-vm-bridge run --disk <qcow2> [--bridge en0] [--nat-port 2222] [--mem 4G] [--cpus 4]
+  mac-vm-bridge pd-setup "WinClient" en0
+  mac-vm-bridge windows-fix           # 输出 Windows 修复说明
+USAGE
+    ;;
+ esac

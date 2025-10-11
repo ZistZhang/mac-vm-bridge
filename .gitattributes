@@ -1,0 +1,12 @@
+*.qcow2 binary -diff
+*.vmdk  binary -diff
+*.ova   binary -diff
+*.ovf   binary -diff
+*.iso   binary -diff
+
+# Do not include large binaries in source exports
+*.qcow2 export-ignore
+*.vmdk  export-ignore
+*.ova   export-ignore
+*.ovf   export-ignore
+*.iso   export-ignore

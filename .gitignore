@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Logs / sockets / pids
+*.log
+qmp.sock
+vm.pid
+
+# VM artifacts (never commit)
+*.qcow2
+*.vmdk
+*.vdi
+*.vhd
+*.ova
+*.ovf
+*.iso
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Reports
+reports/
