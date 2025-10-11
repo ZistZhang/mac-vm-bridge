@@ -240,6 +240,14 @@ EOF_EXP
 config_windows() {
   echo ""; echo "==== 配置 Windows 虚拟机 ===="; echo ""
   prlctl list -a 2>/dev/null | grep -v "UUID" | awk '{print $NF}' || true
+  if [ -z "$VM_NAME" ]; then
+    cand=$(prlctl list -a | tail -n +2 | awk -F'] ' '{print $NF}' 2>/dev/null)
+    vm_auto=""
+    for n in $cand; do
+      if prlctl list -i "$n" 2>/dev/null | grep -qiE 'OS:.*Windows|Guest OS:.*Windows|win-'; then vm_auto="$n"; break; fi
+    done
+    if [ -n "$vm_auto" ]; then VM_NAME="$vm_auto"; echo "[i] Auto-detected VM: $VM_NAME"; fi
+  fi
   if [ -z "$VM_NAME" ]; then read -rp "Windows VM 名称: " VM_NAME; fi
   prlctl list -a 2>/dev/null | grep -q "$VM_NAME" || { err "未找到 VM：$VM_NAME"; exit 1; }
   prlctl set "$VM_NAME" --device-add net --type shared --connect 2>/dev/null || true
