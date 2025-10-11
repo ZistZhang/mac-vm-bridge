@@ -51,7 +51,7 @@ fi
 
 # Existence check
 if prlctl list -a -o name >/dev/null 2>&1; then
-  prlctl list -a -o name | awk 'NR>1{print $0}' | grep -F " $VM" >/dev/null || { echo "[X] VM $VM not found." >&2; exit 2; }
+  prlctl list -a -o name | awk 'NR>1{print $0}' | grep -Fx -- "$VM" >/dev/null || { echo "[X] VM $VM not found." >&2; exit 2; }
 fi
 
 # Ensure one Shared and one Bridged
