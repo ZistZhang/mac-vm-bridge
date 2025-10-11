@@ -133,7 +133,6 @@ convert_image() {
   ok "转换完成"; qemu-img info "$OUT" | head -n5; echo ""
   save_state "image_converted"
 }
-  rm -rf "$ROOT/ova_unpack" 2>/dev/null || true
 
 conflict_check() {
   [ "$SKIP_CONFLICT" -eq 1 ] && { info "跳过冲突检测"; return; }
