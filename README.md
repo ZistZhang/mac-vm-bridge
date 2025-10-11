@@ -1,45 +1,55 @@
 # Mac VM Bridge
 
-一键把 QEMU（x86_64 服务端）与 Parallels Windows 客户端在仅 Wi‑Fi 的 macOS 上桥接互通：
-- 默认业务网段 192.168.200.0/24；服务端 192.168.200.131（QEMU）、客户端 192.168.200.2（Parallels）
-- 仅提示网段冲突，不擅自切换；两端业务网卡均不配默认网关
-- 支持 OVA/OVF/VMX/VMDK → qcow2 转换；NAT 管理口 127.0.0.1:2222 → :22
-- Windows 侧 SkipAsSource 一键修复（需已安装 Parallels Tools），或提供手工执行脚本
+在仅有 Wi‑Fi 的 macOS 上，一键桥接 QEMU 服务端与 Parallels Windows 客户端。自动完成依赖安装、镜像转换、网络编排与健康检查。
 
-法律与使用边界：仅用于本地局域网学习与实验；不分发任何第三方镜像/数据；不提供公网部署指导。详见 LEGAL.md。
+- ✅ Wi‑Fi 默认桥接（多语言识别）
+- ✅ 镜像扫描范围限定在仓库目录（支持拖拽）
+- ✅ 默认 IP：服务端 192.168.200.131，Windows 192.168.200.2
+- ✅ 冲突只提示不自动切换（可选切换 201 网段）
+- ✅ 使用凭据自动配置服务端业务口（无网关）
+- ✅ Parallels Tools 引导安装并自动配置 Windows
+- ✅ 断点续跑、日志与报告
+- ✅ 一键清理
 
 ## 快速开始
+```bash
+git clone https://github.com/your-org/mac-vm-bridge.git
+cd mac-vm-bridge
+chmod +x bin/mvb scripts/*.sh
+./bin/mvb
+```
 
-1) 依赖检查（QEMU + vmnet、Parallels CLI）
-```
-./scripts/macos/check-vmnet.sh
-```
-2) 转换镜像（示例：指定 vmdk/ova/ovf/vmx 之一）
-```
-python3 tools/vm2qemu/vm2qemu.py convert --src /path/to/disk.vmdk --out ./server --name server.qcow2
-```
-3) 启动服务端（NAT 管理 + Wi‑Fi 桥接业务）
-```
-BR_IF=en0 DISK=./server/server.qcow2 ./scripts/macos/qemu-up.sh
-```
-4) 配置 Windows（添加 Shared+Bridged 网卡，修复业务 IP）
-```
-./scripts/macos/pd-add-bridged.sh "WinClient" en0
-# Windows 内安装 Parallels Tools 后：
-# 将 windows/Config-BizNIC.ps1 拷贝到 VM 中执行，或使用 prlctl exec 调用
-```
-5) 健康检查
-- 从宿主：`ssh -p 2222 127.0.0.1`；
-- QEMU 来宾 ping `192.168.200.2`；Windows ping `192.168.200.131`。
+- 选择或拖拽镜像（OVA/OVF/VMX 或含 VMX 的目录）
+- 输入（或接受默认）IP：服务端 200.131，Windows 200.2
+- 输入服务端凭据（默认 root/123456）
+- Windows 侧按提示安装 Parallels Tools（如未安装）
+- 结束后查看 report.md
 
-更多细节见 docs/QUICKSTART.md 与 docs/TROUBLESHOOTING.md。
+更多细节见 docs/QUICKSTART.md
 
-## 目录结构
-- scripts/macos: QEMU 启停、vmnet 检测、PD 网卡配置
-- scripts/windows: Windows 侧网络修复与诊断脚本
-- tools/vm2qemu: 镜像探测/转换/运行工具（原型）
-- docs: 快速开始、排错、合规说明
+## 专家模式
+```bash
+./bin/mvb --cidr 192.168.201 --server-ip 192.168.201.131 --win-ip 192.168.201.2
+./bin/mvb --bridge en1
+./bin/mvb --vm "Windows 11"
+./bin/mvb --skip-conflict-check
+./bin/mvb --help
+```
+
+## 清理
+```bash
+./scripts/cleanup.sh        # 停止 QEMU，清理临时文件
+./scripts/cleanup.sh --full # 额外删除 qcow2、日志、状态
+```
+
+## 要求
+- macOS 13+（Apple Silicon 测试通过）
+- Parallels Desktop 18+（含 prlctl）
+- 磁盘 ≥20GB（镜像转换）
+- 默认 Wi‑Fi 桥接（建议关闭 AP 客户端隔离）
+
+## 架构
+见 docs/ARCHITECTURE.md
 
 ## 许可证
-- 代码：Apache-2.0
-- 文档：CC BY 4.0
+MIT

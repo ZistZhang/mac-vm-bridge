@@ -1,24 +1,26 @@
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
 
-# Logs / sockets / pids
+# Logs & temp
+logs/
 *.log
-qmp.sock
-vm.pid
+state.json
+qemu.pid
+report.txt
+report.md
 
-# VM artifacts (never commit)
+# Artifacts
 *.qcow2
-*.vmdk
-*.vdi
-*.vhd
-*.ova
-*.ovf
-*.iso
+ova_unpack/
 
-# Python
-__pycache__/
-*.pyc
-.venv/
+# Homebrew cache
+.cache/
 
-# Reports
-reports/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
