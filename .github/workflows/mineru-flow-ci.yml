@@ -1,0 +1,165 @@
+name: MinerU Flow cross-platform build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/mineru-flow-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    name: Publish source mirror
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mineru-flow-build
+          fetch-depth: 0
+      - name: Expand source bundle
+        shell: bash
+        run: |
+          cat mineru-flow-bootstrap/source.part-* | base64 --decode > /tmp/mineru-flow.tar.xz
+          rm -rf /tmp/mineru-flow-src
+          mkdir -p /tmp/mineru-flow-src
+          tar -xJf /tmp/mineru-flow.tar.xz -C /tmp/mineru-flow-src
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/mineru-flow-src/. .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: publish MinerU Flow source mirror"
+          git push origin HEAD:mineru-flow-build
+
+  quality:
+    name: Analyze and test
+    needs: bootstrap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mineru-flow-build
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.7
+          channel: stable
+          cache: true
+      - name: Generate platform scaffolding
+        run: |
+          flutter create --platforms=android,windows,macos --org dev.zist --project-name mineru_flow .
+          python3 scripts/prepare_platforms.py
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    name: Android APK
+    needs: bootstrap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mineru-flow-build
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.7
+          channel: stable
+          cache: true
+      - name: Generate Android project
+        run: |
+          flutter create --platforms=android --org dev.zist --project-name mineru_flow .
+          python3 scripts/prepare_platforms.py
+      - run: flutter pub get
+      - run: dart run flutter_launcher_icons
+      - run: flutter build apk --release
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/MinerU-Flow-0.1.0-android.apk
+          sha256sum dist/* > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MinerU-Flow-Android
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    name: Windows EXE
+    needs: bootstrap
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mineru-flow-build
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.7
+          channel: stable
+          cache: true
+      - name: Generate Windows project
+        shell: pwsh
+        run: |
+          flutter create --platforms=windows --org dev.zist --project-name mineru_flow .
+          python scripts/prepare_platforms.py
+      - run: flutter pub get
+      - run: dart run flutter_launcher_icons
+      - run: flutter build windows --release
+      - name: Create portable archive
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/MinerU-Flow-0.1.0-windows-portable.zip -Force
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+      - name: Build installer
+        shell: pwsh
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\windows.iss'
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MinerU-Flow-Windows
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    name: macOS DMG
+    needs: bootstrap
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mineru-flow-build
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.7
+          channel: stable
+          cache: true
+      - name: Generate macOS project
+        run: |
+          flutter create --platforms=macos --org dev.zist --project-name mineru_flow .
+          python3 scripts/prepare_platforms.py
+      - run: flutter pub get
+      - run: dart run flutter_launcher_icons
+      - run: flutter build macos --release
+      - name: Create unsigned DMG
+        run: |
+          mkdir -p dist/dmg-root
+          APP_PATH="build/macos/Build/Products/Release/MinerU Flow.app"
+          if [ ! -d "$APP_PATH" ]; then APP_PATH="build/macos/Build/Products/Release/mineru_flow.app"; fi
+          cp -R "$APP_PATH" "dist/dmg-root/MinerU Flow.app"
+          ln -s /Applications "dist/dmg-root/Applications"
+          hdiutil create -volname "MinerU Flow" -srcfolder dist/dmg-root -ov -format UDZO dist/MinerU-Flow-0.1.0-macos.dmg
+          rm -rf dist/dmg-root
+          shasum -a 256 dist/* > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MinerU-Flow-macOS
+          path: dist/*
+          if-no-files-found: error
