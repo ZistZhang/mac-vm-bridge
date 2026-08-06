@@ -1,0 +1,20 @@
+name: Dispatch MinerU Flow build
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [main]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    if: github.head_ref == 'mineru-flow-build'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start the registered cross-platform workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run mineru-flow-ci.yml --ref main
