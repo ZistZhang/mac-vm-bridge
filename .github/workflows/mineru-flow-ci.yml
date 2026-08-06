@@ -6,6 +6,9 @@ on:
     paths:
       - .github/workflows/mineru-flow-ci.yml
       - tools/extract_mineru_flow.py
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -17,6 +20,7 @@ permissions:
 
 jobs:
   quality:
+    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
     name: Analyze and test
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +48,7 @@ jobs:
       - run: cd project && flutter test
 
   android:
+    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
     name: Android APK
     runs-on: ubuntu-latest
     steps:
@@ -79,6 +84,7 @@ jobs:
           if-no-files-found: error
 
   windows:
+    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
     name: Windows EXE
     runs-on: windows-latest
     steps:
@@ -122,6 +128,7 @@ jobs:
           if-no-files-found: error
 
   macos:
+    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
     name: macOS DMG
     runs-on: macos-15
     steps:
