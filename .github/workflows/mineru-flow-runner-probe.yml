@@ -1,6 +1,10 @@
 name: MinerU Flow runner probe
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/mineru-flow-runner-probe.yml
   pull_request:
     types: [opened]
     branches: [main]
@@ -10,7 +14,7 @@ permissions:
 
 jobs:
   probe:
-    if: startsWith(github.head_ref, 'mineru-flow-probe')
+    if: github.event_name == 'push' || startsWith(github.head_ref, 'mineru-flow-probe')
     runs-on: ubuntu-slim
     steps:
       - run: |
