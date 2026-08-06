@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   quality:
-    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'mineru-flow-build')
     name: Analyze and test
     runs-on: ubuntu-latest
     steps:
@@ -48,7 +48,7 @@ jobs:
       - run: cd project && flutter test
 
   android:
-    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'mineru-flow-build')
     name: Android APK
     runs-on: ubuntu-latest
     steps:
@@ -84,7 +84,7 @@ jobs:
           if-no-files-found: error
 
   windows:
-    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'mineru-flow-build')
     name: Windows EXE
     runs-on: windows-latest
     steps:
@@ -128,7 +128,7 @@ jobs:
           if-no-files-found: error
 
   macos:
-    if: github.event_name != 'pull_request' || github.head_ref == 'mineru-flow-build'
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'mineru-flow-build')
     name: macOS DMG
     runs-on: macos-15
     steps:
