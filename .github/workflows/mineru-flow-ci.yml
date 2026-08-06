@@ -6,6 +6,8 @@ on:
     paths:
       - .github/workflows/mineru-flow-ci.yml
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: write
@@ -164,4 +166,4 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-# Registered workflow trigger: 2026-08-07T01:45+08:00
+# Scheduled trigger registered for the temporary build dispatcher.
