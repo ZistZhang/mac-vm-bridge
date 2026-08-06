@@ -163,3 +163,5 @@ jobs:
           name: MinerU-Flow-macOS
           path: dist/*
           if-no-files-found: error
+
+# Registered workflow trigger: 2026-08-07T01:45+08:00
