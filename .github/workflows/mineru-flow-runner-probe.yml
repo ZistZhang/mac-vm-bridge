@@ -1,0 +1,18 @@
+name: MinerU Flow runner probe
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: startsWith(github.head_ref, 'mineru-flow-probe')
+    runs-on: ubuntu-slim
+    steps:
+      - run: |
+          uname -a
+          echo "GitHub hosted runner is available"
