@@ -7,8 +7,10 @@ on:
       - .github/workflows/mineru-flow-ci.yml
       - tools/extract_mineru_flow.py
   workflow_dispatch:
-  schedule:
-    - cron: '*/5 * * * *'
+
+concurrency:
+  group: mineru-flow-cross-platform
+  cancel-in-progress: true
 
 permissions:
   contents: read
