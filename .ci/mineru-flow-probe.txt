@@ -1,0 +1,1 @@
+Probe ubuntu-slim hosted runner availability.
