@@ -1,42 +1,71 @@
-# Mac VM Bridge
+# MinerU Flow
 
-在仅有 Wi‑Fi 的 macOS 上，一键桥接 QEMU 服务端与 Parallels Windows 客户端。自动完成依赖安装、镜像转换、网络编排与健康检查。
+MinerU Flow is a local-first Windows, macOS and Android client for converting documents to Markdown through the MinerU API.
 
-- ✅ Wi‑Fi 默认桥接（多语言识别）
-- ✅ 镜像扫描范围限定在仓库目录（支持拖拽）
-- ✅ 默认 IP：服务端 192.168.200.131，Windows 192.168.200.2（冲突只提示不自动切换）
-- ✅ 使用凭据自动配置服务端业务口（无网关）
-- ✅ Parallels Tools 引导安装；已安装则自动在 Windows 内执行修复
-- ✅ 自动检测 Windows 虚机名（无需输入）
-- ✅ 兼容启动开关：MVB_COMPAT=1（IDE+e1000，适配 VMware 来宾）
-- ✅ 断点续跑、日志与报告
+It is designed for the common workflow of receiving a large PDF, converting it quickly, and sending the resulting Markdown to an AI agent without manually splitting, uploading, downloading, or merging anything.
 
-## 快速开始
+## Features
+
+- Windows, macOS and Android from one Flutter codebase.
+- Local files are split on the device before upload.
+- PDF chunks are kept below both 180 pages and 180 MiB by default.
+- MinerU v4 local-upload API integration.
+- Multiple user-supplied API tokens with failover.
+- Resumable jobs: app restarts continue from saved batch IDs and downloaded chunks.
+- Bounded concurrency and exponential retry.
+- Automatic ZIP extraction, Markdown merge, image renaming and path rewriting.
+- Produces `document.md`, `README_FOR_AGENT.md`, `manifest.json`, assets, raw chunk outputs and a shareable ZIP.
+- Android share-intent import.
+- Tokens are stored in the platform secure credential store.
+- No server, telemetry, account-password automation, or bundled MinerU credentials.
+
+## Build locally
+
+Install Flutter 3.44.7 or newer, then:
+
 ```bash
-git clone https://github.com/ZistZhang/mac-vm-bridge.git
-cd mac-vm-bridge
-chmod +x bin/mvb scripts/*.sh
-./bin/mvb                 # 首次运行；按向导选择镜像
-# 老镜像（VMware）若遇到引导问题，可使用兼容模式：
-MVB_COMPAT=1 DISK=$PWD/server.qcow2 ./scripts/macos/qemu-up.sh
+flutter create --platforms=android,windows,macos .
+python3 scripts/prepare_platforms.py
+flutter pub get
+flutter pub run flutter_launcher_icons
+flutter test
 ```
 
-- Windows 虚机无需输入名称，脚本会自动检测（优先已运行的 Windows）
-- 如 Windows 未安装 Parallels Tools，会提示手动安装；已安装则自动执行 `windows/Config-BizNIC.ps1`
-- 向导结束将生成 `report.md`
+Build targets:
 
-## 专家模式示例
 ```bash
-./bin/mvb --cidr 192.168.201 --server-ip 192.168.201.131 --win-ip 192.168.201.2
-./bin/mvb --bridge en1    # 指定桥接接口
-./bin/mvb --skip-conflict-check
+flutter build apk --release
+flutter build windows --release
+flutter build macos --release
 ```
 
-## 清理
-```bash
-./scripts/cleanup.sh        # 停止 QEMU，保留 qcow2 和日志
-./scripts/cleanup.sh --full # 彻底清理（含 qcow2/state/logs）
+A Windows build must run on Windows; a macOS build must run on macOS.
+
+## API setup
+
+Create a token in the MinerU API management page and add it in **Settings → API tokens**. MinerU Flow never stores account passwords. It only stores tokens entered by the user.
+
+## Output layout
+
+```text
+export/
+├── <document-name>/
+│   ├── document.md
+│   ├── README_FOR_AGENT.md
+│   ├── manifest.json
+│   ├── assets/
+│   └── raw-chunks/
+└── <document-name>-agent-package.zip
 ```
 
-## 许可证
+## Security and privacy
+
+Document chunks are uploaded directly from the device to MinerU's signed upload URL. No project-owned relay server is involved. API tokens are stored with Keychain on macOS, the Windows credential implementation supplied by `flutter_secure_storage`, and encrypted Android storage.
+
+## Attribution
+
+The long-PDF workflow was informed by the MIT-licensed community project `neosun100/mineru-mcp-server`. This project reimplements the workflow in Dart/Flutter and does not include that project's account-login automation.
+
+## License
+
 MIT

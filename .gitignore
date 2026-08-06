@@ -1,26 +1,19 @@
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Logs & temp
-logs/
-*.log
-state.json
-qemu.pid
-report.txt
-report.md
-
-# Artifacts
-*.qcow2
-ova_unpack/
-
-# Homebrew cache
-.cache/
-
-# IDE
-.vscode/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
 .idea/
-*.swp
-*.swo
-*~
+.vscode/
+*.iml
+*.log
+.DS_Store
+android/.gradle/
+android/local.properties
+android/key.properties
+macos/Pods/
+windows/flutter/ephemeral/
+release-output/
