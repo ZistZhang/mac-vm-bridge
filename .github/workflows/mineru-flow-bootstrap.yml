@@ -41,3 +41,5 @@ jobs:
           git add -A
           git commit -m "feat: publish MinerU Flow build mirror"
           git push origin HEAD:mineru-flow-build
+
+# Bootstrap trigger: 2026-08-07
